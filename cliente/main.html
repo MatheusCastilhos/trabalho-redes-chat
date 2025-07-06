@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <title>WebTalker - Principal</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div class="header">
+    <h1>Bem-vindo(a), <span id="userLabel"></span>!</h1>
+    <button onclick="logout()">Sair</button>
+  </div>
+
+  <div class="panels">
+    <!-- Painel de Usuários Online -->
+    <div class="panel" id="usersPanel">
+      <h2>Usuários Online</h2>
+      <ul id="userList"></ul>
+    </div>
+
+    <!-- Painel de Mensagens -->
+    <div class="panel" id="messagesPanel">
+      <h2>Mensagens</h2>
+      <ul id="messageList"></ul>
+
+      <h3>Enviar Mensagem</h3>
+      <input type="text" id="toUser" placeholder="Para">
+      <textarea id="messageText" placeholder="Digite a mensagem..."></textarea>
+      <button onclick="sendMessage()">Enviar</button>
+    </div>
+
+    <!-- Painel de Notícias -->
+    <div class="panel" id="newsPanel">
+      <h2>Notícias</h2>
+      <ul id="newsList"></ul>
+
+      <h3>Publicar Notícia</h3>
+      <textarea id="newsText" placeholder="Digite a notícia..."></textarea>
+      <button onclick="sendNews()">Publicar</button>
+    </div>
+  </div>
+
+  <script src="main.js"></script>
+</body>
+</html>
