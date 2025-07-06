@@ -1,39 +1,42 @@
 from datetime import datetime
+import shutil
+import atexit
 import uuid
+import stat
+import os
 
-# Armazenamento em memória
-users = {}           # username: login_time
-messages = {}        # username: [mensagens]
+# ========== CONSTANTES E ESTRUTURAS ==========
+
+BASEDIR = os.path.dirname(__file__)
+DOCS_FOLDER = os.path.join(BASEDIR, "docs")
+ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "application/pdf"]
+
+users = {}               # username: login_time
+sessions = {}            # token: username
+messages = {}            # username: [mensagens]
+news = {}                # news_id: dict
 message_id_counter = [0]
-
-news = {}            # news_id: dict
 news_id_counter = [0]
 
-sessions = {}        # token: username
-
-
-# --------- AUTENTICAÇÃO E SESSÃO ---------
+# ========== USUÁRIOS E AUTENTICAÇÃO ==========
 
 def create_user(username):
     if username in users:
         return False
-    users[username] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    users[username] = timestamp()
     return True
 
 def login_user(username):
     if username not in users:
         return None
-    # já está logado?
-    for token, user in sessions.items():
-        if user == username:
-            return None
+    if username in sessions.values():
+        return None
     token = str(uuid.uuid4())
     sessions[token] = username
     return token
 
 def logout_user(token):
-    if token in sessions:
-        del sessions[token]
+    sessions.pop(token, None)
 
 def get_user_by_token(token):
     return sessions.get(token)
@@ -44,89 +47,129 @@ def get_all_logged_users():
 def user_exists(username):
     return username in users
 
-
-# --------- MENSAGENS ---------
-
-def get_next_message_id():
-    message_id_counter[0] += 1
-    return str(message_id_counter[0])
+# ========== MENSAGENS ==========
 
 def store_message(from_user, to_user, text):
-    timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     msg_id = get_next_message_id()
+    time = timestamp()
 
     msg_from = {
-        "id": msg_id,
-        "dir": "para",
-        "user": to_user,
-        "text": text,
-        "time": timestamp
+        "id": msg_id, "dir": "para", "user": to_user,
+        "text": text, "time": time
     }
-
     msg_to = {
-        "id": msg_id,
-        "dir": "de",
-        "user": from_user,
-        "text": text,
-        "time": timestamp
+        "id": msg_id, "dir": "de", "user": from_user,
+        "text": text, "time": time
     }
 
     for user, msg in [(from_user, msg_from), (to_user, msg_to)]:
-        if user not in messages:
-            messages[user] = []
-        messages[user].append(msg)
+        messages.setdefault(user, []).append(msg)
 
 def get_messages_for_user(username):
     return messages.get(username, [])
 
+def delete_message(username, msgid):
+    if username not in messages:
+        return False
 
-# --------- NOTÍCIAS ---------
+    msgs = messages[username]
+    if not any(msg for msg in msgs if msg["id"] == msgid and msg["dir"] == "para"):
+        return False
 
-def get_next_news_id():
-    news_id_counter[0] += 1
-    return str(news_id_counter[0])
+    # Remove da caixa de entrada do usuário e de todos os outros
+    for user in messages:
+        messages[user] = [msg for msg in messages[user] if msg["id"] != msgid]
+
+    return True
+
+# ========== NOTÍCIAS ==========
 
 def store_news(username, text):
-    timestamp = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
     news_id = get_next_news_id()
-
     news[news_id] = {
-        "dir": "de",
-        "user": username,
-        "text": text,
-        "time": timestamp
+        "dir": "de", "user": username,
+        "text": text, "time": timestamp()
     }
 
 def get_all_news():
     return news
 
 def delete_news(username, newsid):
-    if newsid not in news:
-        return False
-    if news[newsid]["user"] != username:
+    if newsid not in news or news[newsid]["user"] != username:
         return False
     del news[newsid]
     return True
 
+# ========== DOCUMENTOS ==========
 
-# --------- EXCLUSÃO DE MENSAGENS ---------
+def save_document(username, docname, content_type, file_data):
+    if content_type not in ALLOWED_MIME_TYPES:
+        return False, "Tipo de arquivo não suportado."
 
-def delete_message(username, msgid):
-    if username not in messages:
-        return False
+    user_folder = os.path.join(DOCS_FOLDER, username)
+    os.makedirs(user_folder, exist_ok=True)
 
-    # Verifica se a mensagem com esse ID foi enviada por esse usuário
-    target_msg = next(
-        (msg for msg in messages[username] if msg["id"] == msgid and msg["dir"] == "para"), None
-    )
-    if not target_msg:
-        return False
+    try:
+        with open(os.path.join(user_folder, docname), "wb") as f:
+            f.write(file_data)
+        return True, "Arquivo salvo com sucesso."
+    except Exception as e:
+        return False, f"Erro ao salvar arquivo: {e}"
 
-    # Remove da lista do próprio usuário
-    messages[username] = [msg for msg in messages[username] if msg["id"] != msgid]
+def get_document(username, docname):
+    path = os.path.join(DOCS_FOLDER, username, docname)
+    if not os.path.exists(path):
+        return None
+    print(f"[DEBUG] Buscando documento em: {path}")
+    return path
 
-    # Remove das listas dos outros usuários (caso exista o mesmo ID)
-    for user, msg_list in messages.items():
-        messages[user] = [msg for msg in msg_list if msg["id"] != msgid]
+def delete_document(username, docname):
+    path = os.path.join(DOCS_FOLDER, username, docname)
+    if os.path.exists(path):
+        os.remove(path)
+        return True
+    return False
 
-    return True
+def list_all_documents(_=None):  # o argumento é ignorado agora
+    if not os.path.exists(DOCS_FOLDER):
+        return []
+
+    result = []
+    for user_folder in os.listdir(DOCS_FOLDER):
+        user_path = os.path.join(DOCS_FOLDER, user_folder)
+        if os.path.isdir(user_path):
+            for fname in os.listdir(user_path):
+                result.append({"owner": user_folder, "name": fname})
+    return result
+
+def get_content_type(filename):
+    ext = filename.lower().split('.')[-1]
+    return {
+        "jpg": "image/jpeg",
+        "jpeg": "image/jpeg",
+        "png": "image/png",
+        "pdf": "application/pdf"
+    }.get(ext, "application/octet-stream")
+
+# ========== UTILITÁRIOS ==========
+
+def timestamp():
+    return datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+
+def get_next_message_id():
+    message_id_counter[0] += 1
+    return str(message_id_counter[0])
+
+def get_next_news_id():
+    news_id_counter[0] += 1
+    return str(news_id_counter[0])
+
+def handle_remove_readonly(func, path, exc_info):
+    os.chmod(path, stat.S_IWRITE)
+    func(path)
+
+def limpar_documentos():
+    if os.path.exists(DOCS_FOLDER):
+        shutil.rmtree(DOCS_FOLDER, onerror=handle_remove_readonly)
+
+atexit.register(limpar_documentos)
