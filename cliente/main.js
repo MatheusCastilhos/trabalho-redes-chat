@@ -1,26 +1,33 @@
 const API_URL = "http://localhost:7447/webtalk";
 
-window.addEventListener("DOMContentLoaded", () => {
+document.addEventListener("DOMContentLoaded", () => {
   const username = localStorage.getItem("username");
   const token = localStorage.getItem("token");
 
   if (!username || !token) {
-    alert("Usuário não autenticado. Voltando para o login.");
+    alert("Usuário não autenticado. Redirecionando para o login.");
     window.location.href = "index.html";
     return;
   }
 
   document.getElementById("userLabel").innerText = username;
+
+  // Eventos de formulários
+  document.getElementById("logoutBtn").addEventListener("click", logout);
+  document.getElementById("messageForm").addEventListener("submit", sendMessage);
+  document.getElementById("newsForm").addEventListener("submit", sendNews);
+  document.getElementById("docForm").addEventListener("submit", uploadDoc);
+
+  // Carregamento inicial
   loadUsers();
   loadMessages();
   loadNews();
+  loadDocs();
 });
 
 function authHeaders() {
   return {
-    headers: {
-      "Authorization": localStorage.getItem("token")
-    }
+    headers: { Authorization: localStorage.getItem("token") }
   };
 }
 
@@ -28,85 +35,50 @@ function loadUsers() {
   fetch(`${API_URL}/users`, authHeaders())
     .then(res => res.status === 204 ? [] : res.json())
     .then(data => {
-      const userList = document.getElementById("userList");
-      userList.innerHTML = "";
-
-      for (let user of data) {
+      const list = document.getElementById("userList");
+      list.innerHTML = "";
+      data.forEach(user => {
         const li = document.createElement("li");
         li.innerText = user;
-        userList.appendChild(li);
-      }
+        list.appendChild(li);
+      });
     })
-    .catch(() => console.log("Erro ao carregar usuários."));
+    .catch(() => console.warn("Erro ao carregar usuários."));
 }
 
 function loadMessages() {
   fetch(`${API_URL}/messages`, authHeaders())
     .then(res => res.status === 204 ? [] : res.json())
     .then(data => {
-      const messageList = document.getElementById("messageList");
-      messageList.innerHTML = "";
-
+      const list = document.getElementById("messageList");
+      list.innerHTML = "";
       for (let id in data) {
         const [dir, user, text, time] = data[id];
         const li = document.createElement("li");
         li.innerText = `${dir} ${user} (${time}): ${text}`;
 
         if (dir === "para") {
-          const btn = document.createElement("button");
-          btn.innerText = "🗑";
-          btn.style.marginLeft = "10px";
-          btn.onclick = () => deleteMessage(id);
-          li.appendChild(btn);
+          const del = createDeleteButton(() => deleteMessage(id));
+          li.appendChild(del);
         }
 
-        messageList.appendChild(li);
+        list.appendChild(li);
       }
     })
-    .catch(() => console.log("Erro ao carregar mensagens."));
+    .catch(() => console.warn("Erro ao carregar mensagens."));
 }
 
-function loadNews() {
-  fetch(`${API_URL}/news`, authHeaders())
-    .then(res => res.status === 204 ? [] : res.json())
-    .then(data => {
-      const newsList = document.getElementById("newsList");
-      newsList.innerHTML = "";
-      const username = localStorage.getItem("username");
+function sendMessage(event) {
+  event.preventDefault();
 
-      for (let id in data) {
-        const [author, text, time] = data[id];
-        const li = document.createElement("li");
-        li.innerText = `${author} (${time}): ${text}`;
-
-        if (author === username) {
-          const btn = document.createElement("button");
-          btn.innerText = "🗑";
-          btn.style.marginLeft = "10px";
-          btn.onclick = () => deleteNews(id);
-          li.appendChild(btn);
-        }
-
-        newsList.appendChild(li);
-      }
-    })
-    .catch(() => console.log("Erro ao carregar notícias."));
-}
-
-function sendMessage() {
   const to = document.getElementById("toUser").value.trim();
   const text = document.getElementById("messageText").value.trim();
 
-  if (!to || !text) {
-    alert("Preencha os campos para enviar a mensagem.");
-    return;
-  }
+  if (!to || !text) return alert("Preencha os campos para enviar.");
 
   fetch(`${API_URL}/messages/${encodeURIComponent(to)}`, {
     method: "POST",
-    headers: {
-      "Authorization": localStorage.getItem("token")
-    },
+    headers: { Authorization: localStorage.getItem("token") },
     body: text
   })
     .then(res => {
@@ -120,19 +92,51 @@ function sendMessage() {
     .catch(() => alert("Erro de conexão."));
 }
 
-function sendNews() {
-  const text = document.getElementById("newsText").value.trim();
+function deleteMessage(id) {
+  fetch(`${API_URL}/messages/${id}`, {
+    method: "DELETE",
+    headers: { Authorization: localStorage.getItem("token") }
+  })
+    .then(res => {
+      if (res.status === 204) loadMessages();
+      else alert("Erro ao excluir mensagem.");
+    })
+    .catch(() => alert("Erro de conexão."));
+}
 
-  if (!text) {
-    alert("Digite uma notícia.");
-    return;
-  }
+function loadNews() {
+  fetch(`${API_URL}/news`, authHeaders())
+    .then(res => res.status === 204 ? [] : res.json())
+    .then(data => {
+      const list = document.getElementById("newsList");
+      const currentUser = localStorage.getItem("username");
+      list.innerHTML = "";
+
+      for (let id in data) {
+        const [author, text, time] = data[id];
+        const li = document.createElement("li");
+        li.innerText = `${author} (${time}): ${text}`;
+
+        if (author === currentUser) {
+          const del = createDeleteButton(() => deleteNews(id));
+          li.appendChild(del);
+        }
+
+        list.appendChild(li);
+      }
+    })
+    .catch(() => console.warn("Erro ao carregar notícias."));
+}
+
+function sendNews(event) {
+  event.preventDefault();
+
+  const text = document.getElementById("newsText").value.trim();
+  if (!text) return alert("Digite uma notícia.");
 
   fetch(`${API_URL}/news`, {
     method: "POST",
-    headers: {
-      "Authorization": localStorage.getItem("token")
-    },
+    headers: { Authorization: localStorage.getItem("token") },
     body: text
   })
     .then(res => {
@@ -146,36 +150,81 @@ function sendNews() {
     .catch(() => alert("Erro de conexão."));
 }
 
-function deleteMessage(msgId) {
-  fetch(`${API_URL}/messages/${msgId}`, {
+function deleteNews(id) {
+  fetch(`${API_URL}/news/${id}`, {
     method: "DELETE",
-    headers: {
-      "Authorization": localStorage.getItem("token")
-    }
+    headers: { Authorization: localStorage.getItem("token") }
   })
     .then(res => {
-      if (res.status === 204) {
-        loadMessages();
+      if (res.status === 204) loadNews();
+      else alert("Erro ao excluir notícia.");
+    })
+    .catch(() => alert("Erro de conexão."));
+}
+
+function uploadDoc(event) {
+  event.preventDefault();
+
+  const input = document.getElementById("docFile");
+  const file = input.files[0];
+  if (!file) return alert("Selecione um arquivo.");
+
+  const formData = new FormData();
+  formData.append("file", file);
+
+  fetch(`${API_URL}/doc`, {
+    method: "PUT",
+    headers: { Authorization: localStorage.getItem("token") },
+    body: formData
+  })
+    .then(res => {
+      if (res.status === 200) {
+        loadDocs();
+        input.value = "";
       } else {
-        alert("Erro ao excluir mensagem.");
+        res.text().then(msg => alert("Erro: " + msg));
       }
     })
     .catch(() => alert("Erro de conexão."));
 }
 
-function deleteNews(newsId) {
-  fetch(`${API_URL}/news/${newsId}`, {
+function loadDocs() {
+  const username = localStorage.getItem("username");
+  const list = document.getElementById("docList");
+  list.innerHTML = "";
+
+  fetch(`${API_URL}/doc/list`, authHeaders())
+    .then(res => res.status === 200 ? res.json() : [])
+    .then(files => {
+      files.forEach(doc => {
+        const li = document.createElement("li");
+        const link = document.createElement("a");
+
+        link.href = `http://localhost:7447/webtalk/doc/public/${doc.owner}/${encodeURIComponent(doc.name)}`;
+        link.target = "_blank";
+        link.innerText = `${doc.name} (de ${doc.owner})`;
+
+        li.appendChild(link);
+
+        if (doc.owner === username) {
+          const del = createDeleteButton(() => deleteDoc(doc.name));
+          li.appendChild(del);
+        }
+
+        list.appendChild(li);
+      });
+    })
+    .catch(() => console.warn("Erro ao carregar documentos."));
+}
+
+function deleteDoc(name) {
+  fetch(`${API_URL}/doc/${encodeURIComponent(name)}`, {
     method: "DELETE",
-    headers: {
-      "Authorization": localStorage.getItem("token")
-    }
+    headers: { Authorization: localStorage.getItem("token") }
   })
     .then(res => {
-      if (res.status === 204) {
-        loadNews();
-      } else {
-        alert("Erro ao excluir notícia.");
-      }
+      if (res.status === 204) loadDocs();
+      else alert("Erro ao excluir documento.");
     })
     .catch(() => alert("Erro de conexão."));
 }
@@ -183,14 +232,20 @@ function deleteNews(newsId) {
 function logout() {
   fetch(`${API_URL}/logout`, {
     method: "POST",
-    headers: {
-      "Authorization": localStorage.getItem("token")
-    }
+    headers: { Authorization: localStorage.getItem("token") }
   })
-    .then(() => {
+    .finally(() => {
       localStorage.removeItem("username");
       localStorage.removeItem("token");
       window.location.href = "index.html";
-    })
-    .catch(() => alert("Erro ao sair."));
+    });
+}
+
+// Utilitário comum para botão de exclusão
+function createDeleteButton(onClick) {
+  const btn = document.createElement("button");
+  btn.innerText = "🗑";
+  btn.style.marginLeft = "10px";
+  btn.addEventListener("click", onClick);
+  return btn;
 }

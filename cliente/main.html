@@ -1,44 +1,63 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>WebTalker - Principal</title>
-  <link rel="stylesheet" href="style.css">
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
-  <div class="header">
+  <header class="header">
     <h1>Bem-vindo(a), <span id="userLabel"></span>!</h1>
-    <button onclick="logout()">Sair</button>
-  </div>
+    <button id="logoutBtn">Sair</button>
+  </header>
 
-  <div class="panels">
-    <!-- Painel de Usuários Online -->
-    <div class="panel" id="usersPanel">
+  <main class="panels">
+    <!-- Usuários Online -->
+    <section class="panel" id="usersPanel">
       <h2>Usuários Online</h2>
       <ul id="userList"></ul>
-    </div>
+    </section>
 
-    <!-- Painel de Mensagens -->
-    <div class="panel" id="messagesPanel">
+    <!-- Mensagens -->
+    <section class="panel" id="messagesPanel">
       <h2>Mensagens</h2>
+
+      <form id="messageForm">
+        <h3>Enviar Mensagem</h3>
+        <input type="text" id="toUser" placeholder="Para" aria-label="Destinatário" required />
+        <textarea id="messageText" placeholder="Digite a mensagem..." aria-label="Mensagem" required></textarea>
+        <button type="submit">Enviar</button>
+      </form>
+
       <ul id="messageList"></ul>
+    </section>
 
-      <h3>Enviar Mensagem</h3>
-      <input type="text" id="toUser" placeholder="Para">
-      <textarea id="messageText" placeholder="Digite a mensagem..."></textarea>
-      <button onclick="sendMessage()">Enviar</button>
-    </div>
-
-    <!-- Painel de Notícias -->
-    <div class="panel" id="newsPanel">
+    <!-- Notícias -->
+    <section class="panel" id="newsPanel">
       <h2>Notícias</h2>
-      <ul id="newsList"></ul>
 
-      <h3>Publicar Notícia</h3>
-      <textarea id="newsText" placeholder="Digite a notícia..."></textarea>
-      <button onclick="sendNews()">Publicar</button>
-    </div>
-  </div>
+      <form id="newsForm">
+        <h3>Publicar Notícia</h3>
+        <textarea id="newsText" placeholder="Digite a notícia..." aria-label="Notícia" required></textarea>
+        <button type="submit">Publicar</button>
+      </form>
+
+      <ul id="newsList"></ul>
+    </section>
+
+    <!-- Documentos -->
+    <section class="panel" id="docsPanel">
+      <h2>Documentos</h2>
+
+      <form id="docForm">
+        <input type="file" id="docFile" aria-label="Selecionar arquivo" required />
+        <button type="submit">Enviar</button>
+      </form>
+
+      <ul id="docList"></ul>
+    </section>
+  </main>
 
   <script src="main.js"></script>
 </body>

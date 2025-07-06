@@ -1,10 +1,12 @@
+/* === RESET BÁSICO === */
 body {
-  font-family: Arial, sans-serif;
+  font-family: "Segoe UI", Arial, sans-serif;
   background-color: #f2f2f2;
   margin: 0;
   padding: 0;
 }
 
+/* === CABEÇALHO === */
 .header {
   background-color: #3f51b5;
   color: white;
@@ -19,6 +21,7 @@ body {
   font-size: 24px;
 }
 
+/* === BOTÕES === */
 button {
   background-color: #4caf50;
   border: none;
@@ -26,6 +29,7 @@ button {
   padding: 10px 15px;
   cursor: pointer;
   border-radius: 5px;
+  font-size: 14px;
   transition: background-color 0.2s ease;
 }
 
@@ -33,11 +37,17 @@ button:hover {
   background-color: #45a049;
 }
 
+button:focus-visible {
+  outline: 3px solid #ffeb3b;
+}
+
+/* === LAYOUT PRINCIPAL === */
 .panels {
   display: flex;
   justify-content: space-around;
   flex-wrap: wrap;
   padding: 20px;
+  gap: 20px;
 }
 
 .panel {
@@ -47,30 +57,43 @@ button:hover {
   box-shadow: 0 0 10px rgba(0,0,0,0.1);
   width: 30%;
   min-width: 300px;
-  margin-bottom: 20px;
+  max-width: 500px;
+  flex: 1;
 }
 
-.panel h2, .panel h3 {
+.panel h2,
+.panel h3 {
   margin-top: 0;
 }
 
-input, textarea {
+/* === CAMPOS DE TEXTO === */
+input,
+textarea {
   width: 100%;
   padding: 10px;
-  margin-top: 10px;
-  margin-bottom: 10px;
+  margin: 10px 0;
   box-sizing: border-box;
   border: 1px solid #ccc;
   border-radius: 5px;
+  font-family: inherit;
   transition: border 0.2s ease, background-color 0.2s ease;
 }
 
-input:focus, textarea:focus {
+input:focus,
+textarea:focus {
   outline: none;
   border: 2px solid #3f51b5;
   background-color: #f9f9ff;
 }
 
+input[type="file"] {
+  padding: 6px;
+  border: none;
+  background: none;
+  font-size: 14px;
+}
+
+/* === LISTAS === */
 ul {
   list-style: none;
   padding: 0;
@@ -87,6 +110,8 @@ ul li {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  font-size: 14px;
+  gap: 10px;
 }
 
 ul li:last-child {
@@ -110,6 +135,7 @@ ul li button:hover {
   color: #c00;
 }
 
+/* === LOGIN === */
 .login-container {
   max-width: 400px;
   margin: 100px auto;
@@ -120,6 +146,11 @@ ul li button:hover {
   text-align: center;
 }
 
+.login-container input {
+  margin: 15px 0;
+}
+
+/* Erro de login */
 #errorMsg {
   color: red;
   margin-top: 10px;
@@ -127,8 +158,26 @@ ul li button:hover {
   min-height: 20px;
 }
 
+/* === VISUALMENTE OCULTO PARA ACESSIBILIDADE === */
+.visually-hidden {
+  position: absolute !important;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* === RESPONSIVO === */
 @media (max-width: 768px) {
+  .panels {
+    flex-direction: column;
+    align-items: center;
+  }
+
   .panel {
     width: 100%;
+    max-width: 600px;
   }
 }
