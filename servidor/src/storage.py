@@ -1,28 +1,51 @@
 from datetime import datetime
+import uuid
 
 # Armazenamento em memória
-users = {}  # username: login_time
-messages = {} #Dict[str, List[dict]] <- armazena por usuário
+users = {}           # username: login_time
+messages = {}        # username: [mensagens]
+message_id_counter = [0]
 
-#contador global
-message_id_counter = [0] #usamos lista para manter mutável
-
-# Armazenamento de notícias públicas
-news = {}  # Dict[id_str] = dict com info da notícia
+news = {}            # news_id: dict
 news_id_counter = [0]
 
+sessions = {}        # token: username
 
-def is_logged_in(username):
+
+# --------- AUTENTICAÇÃO E SESSÃO ---------
+
+def create_user(username):
+    if username in users:
+        return False
+    users[username] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+    return True
+
+def login_user(username):
+    if username not in users:
+        return None
+    # já está logado?
+    for token, user in sessions.items():
+        if user == username:
+            return None
+    token = str(uuid.uuid4())
+    sessions[token] = username
+    return token
+
+def logout_user(token):
+    if token in sessions:
+        del sessions[token]
+
+def get_user_by_token(token):
+    return sessions.get(token)
+
+def get_all_logged_users():
+    return sessions.values()
+
+def user_exists(username):
     return username in users
 
-def log_user_in(username):
-    users[username] = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-    print("[DEBUG] Usuário logado:", username)
-    print("[DEBUG] Estado atual dos usuários:", users)
 
-def log_user_out(username):
-    if username in users:
-        del users[username]
+# --------- MENSAGENS ---------
 
 def get_next_message_id():
     message_id_counter[0] += 1
@@ -57,6 +80,8 @@ def get_messages_for_user(username):
     return messages.get(username, [])
 
 
+# --------- NOTÍCIAS ---------
+
 def get_next_news_id():
     news_id_counter[0] += 1
     return str(news_id_counter[0])
@@ -74,6 +99,17 @@ def store_news(username, text):
 
 def get_all_news():
     return news
+
+def delete_news(username, newsid):
+    if newsid not in news:
+        return False
+    if news[newsid]["user"] != username:
+        return False
+    del news[newsid]
+    return True
+
+
+# --------- EXCLUSÃO DE MENSAGENS ---------
 
 def delete_message(username, msgid):
     if username not in messages:
@@ -93,16 +129,4 @@ def delete_message(username, msgid):
     for user, msg_list in messages.items():
         messages[user] = [msg for msg in msg_list if msg["id"] != msgid]
 
-    return True
-
-
-def delete_news(username, newsid):
-    if newsid not in news:
-        return False
-
-    # Verifica se essa notícia foi criada por esse usuário
-    if news[newsid]["user"] != username:
-        return False
-
-    del news[newsid]
     return True
