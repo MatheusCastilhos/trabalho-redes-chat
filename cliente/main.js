@@ -23,6 +23,14 @@ document.addEventListener("DOMContentLoaded", () => {
   loadMessages();
   loadNews();
   loadDocs();
+
+  // Atualiza as listas automaticamente a cada 5 segundos
+  setInterval(() => {
+    loadUsers();
+    loadMessages();
+    loadNews();
+    loadDocs();
+  }, 5000); // 5000 ms = 5 segundos
 });
 
 function authHeaders() {
@@ -192,27 +200,44 @@ function uploadDoc(event) {
 function loadDocs() {
   const username = localStorage.getItem("username");
   const list = document.getElementById("docList");
-  list.innerHTML = "";
 
   fetch(`${API_URL}/doc/list`, authHeaders())
-    .then(res => res.status === 200 ? res.json() : [])
+    .then(res => (res.status === 200 ? res.json() : []))
     .then(files => {
-      files.forEach(doc => {
-        const li = document.createElement("li");
-        const link = document.createElement("a");
+      const existingItems = Array.from(list.children);
+      const existingDocs = existingItems.map(li => li.getAttribute('data-doc-name'));
 
-        link.href = `http://localhost:7447/webtalk/doc/public/${doc.owner}/${encodeURIComponent(doc.name)}`;
-        link.target = "_blank";
-        link.innerText = `${doc.name} (de ${doc.owner})`;
+      // Cria um Set dos documentos recebidos para rápida checagem
+      const incomingDocs = new Set(files.map(doc => doc.name));
 
-        li.appendChild(link);
-
-        if (doc.owner === username) {
-          const del = createDeleteButton(() => deleteDoc(doc.name, doc.owner));
-          li.appendChild(del);
+      // Remove os elementos da lista que não existem mais no servidor
+      existingItems.forEach(li => {
+        const docName = li.getAttribute('data-doc-name');
+        if (!incomingDocs.has(docName)) {
+          list.removeChild(li);
         }
+      });
 
-        list.appendChild(li);
+      // Adiciona os documentos novos que ainda não estão na lista
+      files.forEach(doc => {
+        if (!existingDocs.includes(doc.name)) {
+          const li = document.createElement("li");
+          li.setAttribute('data-doc-name', doc.name);
+
+          const link = document.createElement("a");
+          link.href = `http://localhost:7447/webtalk/doc/public/${doc.owner}/${encodeURIComponent(doc.name)}`;
+          link.target = "_blank";
+          link.innerText = `${doc.name} (de ${doc.owner})`;
+
+          li.appendChild(link);
+
+          if (doc.owner === username) {
+            const del = createDeleteButton(() => deleteDoc(doc.name, doc.owner));
+            li.appendChild(del);
+          }
+
+          list.appendChild(li);
+        }
       });
     })
     .catch(() => console.warn("Erro ao carregar documentos."));
