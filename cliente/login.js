@@ -7,6 +7,7 @@ document.getElementById("usernameInput").addEventListener("input", clearError);
 function login() {
   const username = getUsername();
   if (!username) return;
+  console.log("Requisição para registro, username:", username);
 
   fetch(`${API_URL}/login/${encodeURIComponent(username)}`, { method: "POST" })
     .then(res => {

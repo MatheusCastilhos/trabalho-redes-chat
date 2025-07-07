@@ -13,8 +13,8 @@ ALLOWED_MIME_TYPES = ["image/jpeg", "image/png", "application/pdf"]
 
 users = {}               # username: login_time
 sessions = {}            # token: username
-messages = {}            # username: [mensagens]
-news = {}                # news_id: dict
+messages = {}            # username: list of messages
+news = {}                # news_id: dict with news data
 message_id_counter = [0]
 news_id_counter = [0]
 
@@ -42,7 +42,7 @@ def get_user_by_token(token):
     return sessions.get(token)
 
 def get_all_logged_users():
-    return sessions.values()
+    return list(sessions.values())
 
 def user_exists(username):
     return username in users
@@ -73,10 +73,11 @@ def delete_message(username, msgid):
         return False
 
     msgs = messages[username]
+    # Só pode deletar mensagem 'para' do usuário
     if not any(msg for msg in msgs if msg["id"] == msgid and msg["dir"] == "para"):
         return False
 
-    # Remove da caixa de entrada do usuário e de todos os outros
+    # Remove a mensagem de todas as caixas
     for user in messages:
         messages[user] = [msg for msg in messages[user] if msg["id"] != msgid]
 
@@ -87,8 +88,9 @@ def delete_message(username, msgid):
 def store_news(username, text):
     news_id = get_next_news_id()
     news[news_id] = {
-        "dir": "de", "user": username,
-        "text": text, "time": timestamp()
+        "user": username,
+        "text": text,
+        "time": timestamp()
     }
 
 def get_all_news():
@@ -120,6 +122,7 @@ def get_document(username, docname):
     path = os.path.join(DOCS_FOLDER, username, docname)
     if not os.path.exists(path):
         return None
+    # DEBUG opcional: pode remover depois
     print(f"[DEBUG] Buscando documento em: {path}")
     return path
 
@@ -130,7 +133,7 @@ def delete_document(username, docname):
         return True
     return False
 
-def list_all_documents(_=None):  # o argumento é ignorado agora
+def list_all_documents(_=None):
     if not os.path.exists(DOCS_FOLDER):
         return []
 

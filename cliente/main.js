@@ -169,13 +169,14 @@ function uploadDoc(event) {
   const file = input.files[0];
   if (!file) return alert("Selecione um arquivo.");
 
-  const formData = new FormData();
-  formData.append("file", file);
-
   fetch(`${API_URL}/doc`, {
     method: "PUT",
-    headers: { Authorization: localStorage.getItem("token") },
-    body: formData
+    headers: {
+      Authorization: localStorage.getItem("token"),
+      "Content-Type": file.type,
+      "X-Filename": file.name
+    },
+    body: file
   })
     .then(res => {
       if (res.status === 200) {
@@ -207,7 +208,7 @@ function loadDocs() {
         li.appendChild(link);
 
         if (doc.owner === username) {
-          const del = createDeleteButton(() => deleteDoc(doc.name));
+          const del = createDeleteButton(() => deleteDoc(doc.name, doc.owner));
           li.appendChild(del);
         }
 
@@ -217,17 +218,18 @@ function loadDocs() {
     .catch(() => console.warn("Erro ao carregar documentos."));
 }
 
-function deleteDoc(name) {
-  fetch(`${API_URL}/doc/${encodeURIComponent(name)}`, {
+function deleteDoc(name, owner) {
+  fetch(`${API_URL}/doc/${encodeURIComponent(owner)}/${encodeURIComponent(name)}`, {
     method: "DELETE",
     headers: { Authorization: localStorage.getItem("token") }
   })
-    .then(res => {
-      if (res.status === 204) loadDocs();
-      else alert("Erro ao excluir documento.");
-    })
-    .catch(() => alert("Erro de conexão."));
+  .then(res => {
+    if (res.status === 204) loadDocs();
+    else alert("Erro ao excluir documento.");
+  })
+  .catch(() => alert("Erro de conexão."));
 }
+
 
 function logout() {
   fetch(`${API_URL}/logout`, {
